@@ -9,6 +9,7 @@
   - [安装](#安装)
   - [申请证书](#申请证书)
   - [续期HTTPS证书](#续期https证书)
+  - [查看证书过期时间](#查看证书过期时间)
   - [nginx应用该证书的例子](#nginx应用该证书的例子)
   - [无法应用到主域名](#无法应用到主域名)
 - [certbot-nginx](#certbot-nginx)
@@ -27,7 +28,7 @@
 
 ## certbot-auto
 
-刚看到新闻，Let's Encrypt发布的 ACME v2 现已正式支持通配符HTTPS证书，就立马使用上了 
+刚看到新闻，Let's Encrypt发布的 ACME v2 现已正式支持通配符HTTPS证书，就立马使用上了 [certbot](https://github.com/certbot/certbot)
 
 ### 安装
 
@@ -44,6 +45,15 @@ chmod a+x certbot-auto
 ```bash
 # 注xxx.com请根据自己的域名自行更改
 ./certbot-auto --server https://acme-v02.api.letsencrypt.org/directory -d "*.xxx.com" --manual --preferred-challenges dns-01 certonly
+```
+
+从服务器到目的地的出站端口 443 是否被防火墙阻止
+
+```bash
+nc -vz acme-v02.api.letsencrypt.org 443 -w2
+# Ncat: Version 7.50 ( https://nmap.org/ncat )
+# Ncat: Connected to 23.77.214.183:443.
+# Ncat: 0 bytes sent, 0 bytes received in 0.07 seconds.
 ```
 
 执行完这一步之后，会下载一些需要的依赖，稍等片刻之后，会提示输入邮箱
@@ -130,6 +140,15 @@ IMPORTANT NOTES:
 
 ```bash
 certbot-auto renew
+certbot-auto delete -d chat.xxx.cn # 删除证书
+```
+
+⚠️ 注意这里会有升级操作，并且有安装 Python 包，有时候会非常慢，不要停止，停止操作可能会造成麻烦。
+
+### 查看证书过期时间
+
+```bash
+openssl x509 -noout -dates -in /etc/letsencrypt/live/<你的域名>/cert.pem
 ```
 
 ### nginx应用该证书的例子

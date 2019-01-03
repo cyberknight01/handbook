@@ -14,6 +14,7 @@ CentOS7安装维护Gitlab
   - [更改配置](#更改配置)
   - [配置并启动GitLab](#配置并启动gitlab)
   - [登录GitLab](#登录gitlab)
+- [Docker安装](#docker安装)
 - [卸载](#卸载)
 - [运维](#运维)
   - [服务管理](#服务管理)
@@ -26,14 +27,18 @@ CentOS7安装维护Gitlab
   - [自动备份](#自动备份)
   - [备份保留七天](#备份保留七天)
   - [开始恢复](#开始恢复)
+- [连接数据库](#连接数据库)
 - [一些常规目录](#一些常规目录)
 - [使用HTTPS](#使用https)
 - [暴力升级](#暴力升级)
+- [优化内存使用](#优化内存使用)
 - [错误处理](#错误处理)
   - [解决80端口被占用](#解决80端口被占用)
   - [头像无法正常显示](#头像无法正常显示)
   - [internal API unreachable](#internal-api-unreachable)
   - [proxy_temp 目录没有权限](#proxy_temp-目录没有权限)
+  - [webhooks 错误](#webhooks-错误)
+  - [服务无法启动](#服务无法启动)
   - [其它错误](#其它错误)
 - [参考资料](#参考资料)
 
@@ -145,6 +150,10 @@ sudo gitlab-rake cache:clear RAILS_ENV=production
 Username: root 
 Password: 5iveL!fe
 ```
+
+## Docker安装
+
+[Docker 安装 Gitlab 教程](https://github.com/jaywcjlove/docker-tutorial/blob/master/gitlab.md)
 
 ## 卸载
 
@@ -269,7 +278,7 @@ gitlab_rails['backup_path'] = '/mnt/backups'
 gitlab-rake gitlab:backup:create
 ```
 
-以上命令将在/var/opt/gitlab/backups目录下创建一个名称类似为xxxxxxxx_gitlab_backup.tar的压缩包, 这个压缩包就是Gitlab整个的完整部分, 其中开头的xxxxxx是备份创建的时间戳。
+以上命令将在 `/var/opt/gitlab/backups` 目录下创建一个名称类似为xxxxxxxx_gitlab_backup.tar的压缩包, 这个压缩包就是Gitlab整个的完整部分, 其中开头的xxxxxx是备份创建的时间戳。
 
 修改后使用gitlab-ctl reconfigure命令重载配置文件。
 
@@ -316,7 +325,6 @@ gitlab_rails['backup_keep_time'] = 604800
 sudo gitlab-ctl reconfigure  
 ```
 
-
 ### 开始恢复
 
 迁移如同备份与恢复的步骤一样, 只需要将老服务器 `/var/opt/gitlab/backups` 目录下的备份文件拷贝到新服务器上的 `/var/opt/gitlab/backups` 即可(如果你没修改过默认备份目录的话)。 然后执行恢复命令。
@@ -361,6 +369,41 @@ sudo find /var/opt/gitlab/git-data/repositories -type d -print0 | sudo xargs -0 
 
 ```bash
 sudo chown -R git:git 1483533591_2017_01_04_gitlab_backup.tar
+```
+
+## 连接数据库
+
+```bash
+# 登陆gitlab的安装服务查看配置文件
+cat /var/opt/gitlab/gitlab-rails/etc/database.yml 
+
+vim /var/opt/gitlab/postgresql/data/postgresql.conf
+# listen_addresses = '192.168.1.125' # 修改监听地址为ip
+# 或者改为 "*"
+```
+
+修改 `pg_hba.conf` 配置
+
+```bash
+vim  /var/opt/gitlab/postgresql/data/pg_hba.conf
+# 将下面这一行添加到配置的最后面
+# host    all    all    0.0.0.0/0    trust
+```
+
+如果不希望允许所有IP远程访问，则可以将上述配置项中的0.0.0.0设定为特定的IP值。
+
+重启 `postgresql` 数据库
+
+```
+gitlab-ctl restart postgresql
+```
+
+查看 `/etc/passwd` 文件里边 `gitlab` 对应的系统用户
+
+```bash
+[root@localhost ~]$ cat /etc/passwd
+...
+gitlab-psql:x:493:490::/var/opt/gitlab/postgresql:/bin/sh  # gitlab的postgresql用户
 ```
 
 ## 一些常规目录
@@ -466,6 +509,13 @@ sudo yum install gitlab-ce #(自动安装最新版)
 sudo yum install gitlab-ce-8.15.2-ce.0.el6 #(安装指定版本)
 ```
 
+注意：`10.7` 版本升级到 `11.x` 版本需要先升级到 `10.8` 版本
+
+```bash
+# 安装指定版本 10.8 的版本
+sudo yum install gitlab-ce-10.8.0-ce.0.el6
+```
+
 安装完成记得将所有服务启起来哦
 
 ```bash
@@ -502,6 +552,13 @@ Failed:
 ```
 
 看上面一堆错误，瞬间就懵逼了，看到一条救星命令让我尝试运行 `sudo touch /etc/gitlab/skip-auto-migrations` 于是我二逼的重新`yum install gitlab-ce`运行了，结果真的安装成功了，😄。
+
+```bash
+# 重新安装命令
+yum reinstall gitlab-ce
+# or
+yum install gitlab-ce
+```
 
 ```
 ...
@@ -541,6 +598,24 @@ Found /etc/gitlab/skip-auto-migrations, exiting...
 
 ```bash
 gitlab-ctl reconfigure
+```
+
+## 优化内存使用
+
+修改配置文件 `/etc/gitlab/gitlab.rb`
+
+```bash
+# 减少 postgresql 数据库缓存
+postgresql['shared_buffers'] = "256MB"
+# 减少sidekiq的并发数
+sidekiq['concurrency'] = 1
+
+# worker进程数
+postgresql['max_worker_processes'] = 4
+
+unicorn['worker_processes'] = 2  ## worker进程数
+unicorn['worker_memory_limit_min'] = "400 * 1 << 20" ##worker最小内存
+unicorn['worker_memory_limit_max'] = "650 * 1 << 20" ##worker最大内存
 ```
 
 ## 错误处理
@@ -635,6 +710,52 @@ sudo vi /usr/local/nginx/conf/nginx.conf
 # 在第一行添加
 user root;
 ```
+
+### webhooks 错误
+
+错误显示不允许发送本地请求
+
+```
+Url is blocked: Requests to the local network are not allowed
+```
+
+解决方法，在设置中设置允许本地连接即可
+
+> `admin` => `Settings` => `Outbound requests`
+
+
+### 服务无法启动
+
+```
+[root@localhost gitlab]# gitlab-ctl status
+fail: alertmanager: runsv not running
+fail: gitaly: runsv not running
+fail: gitlab-monitor: runsv not running
+fail: gitlab-workhorse: runsv not running
+fail: logrotate: runsv not running
+fail: nginx: runsv not running
+fail: node-exporter: runsv not running
+fail: postgres-exporter: runsv not running
+fail: postgresql: runsv not running
+fail: prometheus: runsv not running
+fail: redis: runsv not running
+fail: redis-exporter: runsv not running
+fail: sidekiq: runsv not running
+fail: unicorn: runsv not running
+```
+
+[](https://confluence.jaytaala.com/pages/viewpage.action?pageId=9666568)
+[Omnibus gitlab do not restart on CentOS7](https://gitlab.com/gitlab-org/omnibus-gitlab/issues/272)
+开机自动启动服务
+
+```
+[root@localhost ~]# systemctl status gitlab-runsvdir.service -l
+● gitlab-runsvdir.service - GitLab Runit supervision process
+   Loaded: loaded (/usr/lib/systemd/system/gitlab-runsvdir.service; enabled; vendor preset: disabled)
+   Active: inactive (dead)
+```
+
+如果 `gitlab-runsvdir.service` 服务没有响应，你可能要看一下内存是否满了，需要释放内存，老的版本需要 2G 内存，新版本需要至少 4G 内存。
 
 ### 其它错误
 

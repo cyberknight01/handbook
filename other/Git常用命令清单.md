@@ -2,8 +2,8 @@
 
 目录
 ===
-<!-- TOC -->
 
+- [安装](#安装)
 - [配置](#配置)
 - [修改项目中的个人信息](#修改项目中的个人信息)
   - [配置自动换行](#配置自动换行)
@@ -20,6 +20,7 @@
   - [回滚到某个commit提交](#回滚到某个commit提交)
   - [回退到某一个版本](#回退到某一个版本)
   - [去掉某个commit](#去掉某个commit)
+  - [获取最近一次提交的 commit id](#获取最近一次提交的-commit-id)
   - [新建一个空分支](#新建一个空分支)
   - [合并多个commit](#合并多个commit)
   - [修改远程Commit记录](#修改远程commit记录)
@@ -31,6 +32,7 @@
   - [查看git仓库中最近修改的分支](#查看git仓库中最近修改的分支)
   - [打造自己的git命令](#打造自己的git命令)
   - [中文乱码的解决方案](#中文乱码的解决方案)
+  - [提交一个空文件夹](#提交一个空文件夹)
 - [新建仓库](#新建仓库)
   - [init](#init)
   - [status](#status)
@@ -64,6 +66,8 @@
   - [分支切换](#分支切换)
 - [远端](#远端)
 - [submodule](#submodule)
+- [更新](#更新)
+  - [转换分支](#转换分支)
 - [删除文件](#删除文件)
 - [remote](#remote-1)
 - [标签tag](#标签tag)
@@ -75,7 +79,45 @@
 - [报错问题解决](#报错问题解决)
 - [参考资料](#参考资料)
 
-<!-- /TOC -->
+## 安装
+
+[官方教程](https://git-scm.com/download/linux)，在 Linux/Unix 系统中，通过工具在中安装 `git`,这种方式比较简单，便于升级卸载工具。
+
+下面介绍在 CentOS 系统中，通过 yum 来安装 git
+
+> **Red Hat Enterprise Linux, Oracle Linux, CentOS, Scientific Linux, et al.**
+> RHEL and derivatives typically ship older versions of git. You can [download a tarball](https://www.kernel.org/pub/software/scm/git/) and build from source, or use a 3rd-party repository such as [the IUS Community Project](https://ius.io/) to obtain a more recent version of git.
+
+官方文档说 git 在 `RHEL` 和衍生产品通常都会发布旧版本的 `git`，我们需要源码编译安装，或者使用第三方存储库（如[IUS社区项目](https://ius.io/)）。
+
+现在我们通过，[IUS社区](https://ius.io/GettingStarted/)下载 [ius-release.rpm](https://centos7.iuscommunity.org/ius-release.rpm) 文件进行安装
+
+```bash
+# 注意下载不同的版本，本机 CentOS 7
+wget https://centos7.iuscommunity.org/ius-release.rpm
+# 安装rpm文件
+rpm -ivh ius-release.rpm
+```
+
+查看可安装的git安装包
+
+```bash
+repoquery --whatprovides git
+# git-0:1.8.3.1-13.el7.x86_64
+# git2u-0:2.16.5-1.ius.centos7.x86_64
+# git2u-0:2.16.2-1.ius.centos7.x86_64
+# git2u-0:2.16.4-1.ius.centos7.x86_64
+# git-0:1.8.3.1-14.el7_5.x86_64
+```
+
+卸载 `1.8.3` 的 `git`，安装 `2.16.5` 的 `git`
+
+```bash
+# 卸载老的版本
+yum remove git
+# 安装新的版本
+yum install git2u
+```
 
 ## 配置
 
@@ -356,6 +398,13 @@ git reset --hard <hash>
 git revert <commit-hash> 
 ```
 
+### 获取最近一次提交的 commit id
+
+```bash
+git rev-parse HEAD # e10721cb8859b2cd340d31a52ef4bf4b9629ddda
+git rev-parse --short HEAD # e10721c
+```
+
 ### 新建一个空分支
 
 ```bash
@@ -610,6 +659,10 @@ git st
 git config --global core.quotepath false
 ```
 
+### 提交一个空文件夹
+
+在空文件夹中建立一个文件 `.gitkeep`, 你就可以提交这个空文件夹了。
+
 ## 新建仓库
 
 ### init
@@ -644,14 +697,18 @@ git push -f origin master # 强制推送文件，缩写 -f（全写--force）
 
 ## clone
 
-`git clone git://github.com/JSLite/JSLite.js.git `  
-`git clone git://github.com/JSLite/JSLite.js.git mypro` #克隆到自定义文件夹  
-`git clone [user@]example.com:path/to/repo.git/` #SSH协议还有另一种写法。  
+```bash
+git clone git://github.com/JSLite/JSLite.js.git   
+git clone git://github.com/JSLite/JSLite.js.git --depth=1  
+git clone git://github.com/JSLite/JSLite.js.git mypro # 克隆到自定义文件夹  
+git clone [user@]example.com:path/to/repo.git/ # SSH协议还有另一种写法。  
+```
 
 git clone支持多种协议，除了HTTP(s)以外，还支持SSH、Git、本地文件协议等，下面是一些例子。`git clone <版本库的网址> <本地目录名>`  
 
 ```shell
 $ git clone http[s]://example.com/path/to/repo.git/
+$ git clone ssh://example.com/path/to/repo.git/
 $ git clone ssh://example.com/path/to/repo.git/
 $ git clone git://example.com/path/to/repo.git/
 $ git clone /opt/git/project.git 
@@ -879,7 +936,7 @@ git clone https://github.com/jaywcjlove/handbook.git --depth=1 --recurse-submodu
 git submodule add --force '仓库地址' '路径'
 # 其中，仓库地址是指子模块仓库地址，路径指将子模块放置在当前工程下的路径。
 # 注意：路径不能以 / 结尾（会造成修改不生效）、不能是现有工程已有的目录（不能順利 Clone）
-git submodule init # 初始化submodule
+git submodule init # 初始化 submodule
 git submodule update # 更新submodule(必须在根目录执行命令)
 git submodule update --init --recursive  # 下载的工程带有submodule
 ```
@@ -887,11 +944,32 @@ git submodule update --init --recursive  # 下载的工程带有submodule
 当使用`git clone`下来的工程中带有submodule时，初始的时候，submodule的内容并不会自动下载下来的，此时，只需执行如下命令：
 
 ```bash
+git submodule foreach --recursive git submodule init
+```
+
+## 更新
+
+```bash
 git submodule foreach git pull  # submodule 里有其他的 submodule 一次更新
 git submodule foreach git pull origin master # submodule更新
-
-git submodule foreach --recursive git submodule init
 git submodule foreach --recursive git submodule update
+git submodule update --recursive --remote
+git pull --recurse-submodules
+```
+
+### 转换分支
+
+```bash
+$ git config -f .gitmodules submodule.public.branch gh-pages
+```
+
+下面是更改 `.gitmodules`  文件内容
+
+```
+[submodule "public"]
+	path = public
+	url = git@github.com:jaywcjlove/gitke.git
+	branch = gh-pages
 ```
 
 ## 删除文件
@@ -1050,6 +1128,35 @@ vim .git/config
 git config --global core.quotepath false
 ```
 
+**4. The authenticity of host 192.168.0.xxx can't be establis**
+
+修改 `/etc/ssh/ssh_config` 中的 `StrictHostKeyChecking` 的 `ask` 为 `no` 解决问题。
+
+**5. SSH连接时出现 Host key verification failed 的原因及解决方法**
+
+用 OpenSSH 的人都知 ssh 会把你每个你访问过计算机的公钥(public key)都记录在~/.ssh/known_hosts。当下次访问相同计算机时，OpenSSH 会核对公钥。如果公钥不同，OpenSSH 会发出警告，避免你受到 DNS Hijack 之类的攻击。
+SSH 对主机的 public_key 的检查等级是根据
+
+```bash
+StrictHostKeyChecking=no  # 最不安全的级别，当然也没有那么多烦人的提示了，相对安全的内网测试时建议使用。如果连接server的key在本地不存在，那么就自动添加到文件中（默认是known_hosts），并且给出一个警告。
+StrictHostKeyChecking=ask # 默认的级别，就是出现刚才的提示了。如果连接和key不匹配，给出提示，并拒绝登录。
+StrictHostKeyChecking=yes # 最安全的级别，如果连接与key不匹配，就拒绝连接，不会提示详细信息。
+```
+
+【解决方法1】在 `.ssh/config`（或者`/etc/ssh/ssh_config`）中配置：
+
+```conf
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null
+```
+
+解决方法 2
+
+```bash
+vi ~/.ssh/known_hosts # 删除对应ip的相关rsa信息
+rm known_hosts # 或者直接全部删除
+```
+
 ## 参考资料
 
 - [Git官网](http://git-scm.com/)
@@ -1072,3 +1179,5 @@ git config --global core.quotepath false
 - [Git 本地仓库和裸仓库](https://gold.xitu.io/post/5842f9b861ff4b005889ade6)
 - [沉浸式学 Git](http://www.kancloud.cn/kancloud/igit/46710)
 - [Git进阶用法，主要是rebase高级用法](http://way.oschina.io/2016/12/15/notes/GitAdvance/?utm_source=gank.io&utm_medium=email)
+- [成为一个git大师](https://www.atlassian.com/git/tutorials)
+- [高质量的Git中文教程](https://github.com/geeeeeeeeek/git-recipes)

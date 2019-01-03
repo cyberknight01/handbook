@@ -3,7 +3,6 @@
 
 目录
 ===
-<!-- TOC -->
 
 - [Redis安装](#redis安装)
   - [官方编译安装](#官方编译安装)
@@ -34,7 +33,6 @@
 - [配置说明](#配置说明)
 - [精品文章](#精品文章)
 
-<!-- /TOC -->
 
 ## Redis安装
 
@@ -189,12 +187,20 @@ $ redis-cli info | grep redis_version
 $ redis-cli info | grep tcp_port
 ```
 
+### 服务管理
+
+```bash
+systemctl status redis # 查看服务状态
+systemctl start redis # 启动 Redis
+systemctl stop redis # 启动 Redis
+```
+
 ### 开机启动
 
 如果你是通过yum安装，可以使用下面方式开机启动。
 
 ```bash
-systemctl enable redis.servic
+systemctl enable redis.service
 chkconfig redis on
 ```
 
